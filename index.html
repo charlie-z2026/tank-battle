@@ -274,7 +274,7 @@ function updateBullet(b) {
 // --- Tank ---
 function createTank(x, y, dir, isPlayer) {
   return {
-    x, y, w: TILE-8, h: TILE-8, dir,
+    x, y, w: TILE, h: TILE, dir,
     speed: isPlayer ? 3.0 : 1.2,
     isPlayer, alive: true,
     cooldown: 0, fireRate: isPlayer ? 14 : 40,
@@ -295,22 +295,43 @@ function tryMove(tank, speed) {
   if (ny < 0) ny = 0;
   else if (ny + tank.h > H) ny = H - tank.h;
 
-  // Pixel snapping: auto-align to tile grid on perpendicular axis
-  const SNAP_DIST = 5;
+  // Pixel snapping: auto-align perpendicular axis to tile grid (half-pixel threshold)
+  const SNAP_DIST = 0.5;
   if (dir === DIR.UP || dir === DIR.DOWN) {
     const snapL = Math.round(nx / TILE) * TILE;
     const snapR = Math.round((nx + tank.w) / TILE) * TILE - tank.w;
-    const dL = Math.abs(nx - snapL);
-    const dR = Math.abs(nx - snapR);
-    const best = dL <= dR ? snapL : snapR;
-    if (Math.abs(nx - best) <= SNAP_DIST) nx = best;
+    const best = Math.abs(nx - snapL) <= Math.abs(nx - snapR) ? snapL : snapR;
+    if (Math.abs(nx - best) <= SNAP_DIST) {
+      nx = best;
+    } else {
+      // Fallback: if about to span 2 tiles, try snapping to nearest grid line
+      const cSpan = Math.floor((nx + tank.w - 0.5) / TILE) - Math.floor(nx / TILE);
+      if (cSpan > 0) {
+        const alt1 = Math.round(nx / TILE) * TILE;
+        const alt2 = Math.round((nx + tank.w) / TILE) * TILE - tank.w;
+        const altBest = Math.abs(nx - alt1) <= Math.abs(nx - alt2) ? alt1 : alt2;
+        const c1a = Math.floor(altBest / TILE);
+        const c2a = Math.floor((altBest + tank.w - 0.5) / TILE);
+        if (c2a - c1a <= 0) nx = altBest;
+      }
+    }
   } else {
     const snapT = Math.round(ny / TILE) * TILE;
     const snapB = Math.round((ny + tank.h) / TILE) * TILE - tank.h;
-    const dT = Math.abs(ny - snapT);
-    const dB = Math.abs(ny - snapB);
-    const best = dT <= dB ? snapT : snapB;
-    if (Math.abs(ny - best) <= SNAP_DIST) ny = best;
+    const best = Math.abs(ny - snapT) <= Math.abs(ny - snapB) ? snapT : snapB;
+    if (Math.abs(ny - best) <= SNAP_DIST) {
+      ny = best;
+    } else {
+      const rSpan = Math.floor((ny + tank.h - 0.5) / TILE) - Math.floor(ny / TILE);
+      if (rSpan > 0) {
+        const alt1 = Math.round(ny / TILE) * TILE;
+        const alt2 = Math.round((ny + tank.h) / TILE) * TILE - tank.h;
+        const altBest = Math.abs(ny - alt1) <= Math.abs(ny - alt2) ? alt1 : alt2;
+        const r1a = Math.floor(altBest / TILE);
+        const r2a = Math.floor((altBest + tank.h - 0.5) / TILE);
+        if (r2a - r1a <= 0) ny = altBest;
+      }
+    }
   }
 
   // Directional edge checking — only check tiles in the movement direction
@@ -318,19 +339,19 @@ function tryMove(tank, speed) {
   if (dir === DIR.UP) {
     r1 = r2 = Math.floor(ny / TILE);
     c1 = Math.floor(nx / TILE);
-    c2 = Math.floor((nx + tank.w - 0.01) / TILE);
+    c2 = Math.floor((nx + tank.w - 0.5) / TILE);
   } else if (dir === DIR.DOWN) {
-    r1 = r2 = Math.floor((ny + tank.h - 0.01) / TILE);
+    r1 = r2 = Math.floor((ny + tank.h - 0.5) / TILE);
     c1 = Math.floor(nx / TILE);
-    c2 = Math.floor((nx + tank.w - 0.01) / TILE);
+    c2 = Math.floor((nx + tank.w - 0.5) / TILE);
   } else if (dir === DIR.LEFT) {
     c1 = c2 = Math.floor(nx / TILE);
     r1 = Math.floor(ny / TILE);
-    r2 = Math.floor((ny + tank.h - 0.01) / TILE);
+    r2 = Math.floor((ny + tank.h - 0.5) / TILE);
   } else {
-    c1 = c2 = Math.floor((nx + tank.w - 0.01) / TILE);
+    c1 = c2 = Math.floor((nx + tank.w - 0.5) / TILE);
     r1 = Math.floor(ny / TILE);
-    r2 = Math.floor((ny + tank.h - 0.01) / TILE);
+    r2 = Math.floor((ny + tank.h - 0.5) / TILE);
   }
 
   for (let r = r1; r <= r2; r++) {
@@ -713,38 +734,38 @@ function drawTank(tank) {
 
   // Tracks
   ctx.fillStyle = isPlayer ? '#2a6bc4' : '#7a2020';
-  ctx.fillRect(-hw, -hh+2, 4, h-4);
-  ctx.fillRect(hw-4, -hh+2, 4, h-4);
+  ctx.fillRect(-hw, -hh+2, 5, h-4);
+  ctx.fillRect(hw-5, -hh+2, 5, h-4);
 
   // Track treads
   ctx.fillStyle = isPlayer ? '#1a4d94' : '#5a1515';
-  for (let i = -hh+5; i < hh-5; i += 5) {
-    ctx.fillRect(-hw+1, i, 2, 2);
-    ctx.fillRect(hw-3, i, 2, 2);
+  for (let i = -hh+7; i < hh-7; i += 5) {
+    ctx.fillRect(-hw+1, i, 3, 3);
+    ctx.fillRect(hw-4, i, 3, 3);
   }
 
   // Body
   ctx.fillStyle = isPlayer ? '#3a8aff' : '#d04040';
-  ctx.fillRect(-hw+4, -hh+4, w-8, h-8);
+  ctx.fillRect(-hw+5, -hh+5, w-10, h-10);
   ctx.strokeStyle = isPlayer ? '#7ab8ff' : '#ff7777';
   ctx.lineWidth = 1;
-  ctx.strokeRect(-hw+4, -hh+4, w-8, h-8);
+  ctx.strokeRect(-hw+5, -hh+5, w-10, h-10);
 
   // Turret circle
   ctx.beginPath();
-  ctx.arc(0, 0, 5, 0, Math.PI * 2);
+  ctx.arc(0, 0, 7, 0, Math.PI * 2);
   ctx.fillStyle = isPlayer ? '#ffd700' : '#eee';
   ctx.fill();
   ctx.strokeStyle = isPlayer ? '#ffaa00' : '#bbb';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
   ctx.stroke();
 
   // Barrel
   ctx.fillStyle = isPlayer ? '#ffd700' : '#eee';
-  ctx.fillRect(-2, -hh+4, 4, -9);
-  ctx.fillRect(-3, -hh-5, 6, 3);
+  ctx.fillRect(-3, -hh+4, 6, -14);
+  ctx.fillRect(-4, -hh-10, 8, 4);
   ctx.fillStyle = isPlayer ? '#ffaa00' : '#ccc';
-  ctx.fillRect(-2, -hh-7, 4, 2);
+  ctx.fillRect(-3, -hh-12, 6, 2);
 
   ctx.restore();
 
