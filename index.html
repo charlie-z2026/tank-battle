@@ -274,7 +274,7 @@ function updateBullet(b) {
 // --- Tank ---
 function createTank(x, y, dir, isPlayer) {
   return {
-    x, y, w: TILE-10, h: TILE-10, dir,
+    x, y, w: TILE-8, h: TILE-8, dir,
     speed: isPlayer ? 3.0 : 1.2,
     isPlayer, alive: true,
     cooldown: 0, fireRate: isPlayer ? 14 : 40,
@@ -517,7 +517,7 @@ function updateGame() {
     if (b.isPlayer) {
       for (const e of game.enemies) {
         if (!e.alive) continue;
-        if (rectHit(b, e)) {
+        if (rectHit(b, {x: e.x - 2, y: e.y - 2, w: e.w + 4, h: e.h + 4})) {
           e.hp--;
           b.alive = false;
           if (e.hp <= 0) {
